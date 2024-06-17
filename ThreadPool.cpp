@@ -22,10 +22,10 @@ ThreadPool::ThreadPool()
 ThreadPool::~ThreadPool()
 {
     isPoolRunning_ = false;
-    notEmpty_.notify_all();
 
     // 等待线程池里面所有的线程返回     两种状态:阻塞 正在执行任务中
     std::unique_lock<std::mutex> lock(taskQueMtx_);
+    notEmpty_.notify_all();
     exitCond_.wait(lock, [&]()->bool {return threads_.size() == 0; });
 }
 
@@ -149,7 +149,7 @@ Result ThreadPool::submitTask(std::shared_ptr<Task> sp)
 void ThreadPool::threadFunc(int threadId)   // 线程函数返回，线程就结束了
 {
     auto lastTime = std::chrono::high_resolution_clock().now();
-    
+
     while(isPoolRunning_)
     {
         std::shared_ptr<Task> task;
@@ -248,10 +248,11 @@ void ThreadPool::threadFunc(int threadId)   // 线程函数返回，线程就结
 // 静态成员变量需要在外部初始化
 int Thread::generateId_ = 0;
 
+// 遇到的问题：下面的generateId_忘记了++，导致核心转储，这样的话就一直是线程id0
 // 线程构造
 Thread::Thread(ThreadFunc func)
     : func_(func)
-    , threadId_(generateId_)
+    , threadId_(generateId_++)
 {}
 
 // 线程析构
